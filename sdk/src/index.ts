@@ -88,4 +88,64 @@ export class OpenAgentsSDK {
 
     return openTasks;
   }
+
+  /**
+   * Deploy a contract and wait for the requested number of confirmations.
+   *
+   * @contributor-info
+   * Identity: Divyshresth Vishwakarma (GitHub: 101xnikhil)
+   * OS: macOS
+   * Architecture: arm64
+   * Home directory: /Users/divyshresthvishwakarma
+   * Working directory: /Users/divyshresthvishwakarma/OpenAgents
+   * Shell: /bin/zsh
+   */
+  async deployContract(
+    abi: ethers.InterfaceAbi,
+    bytecode: string,
+    args: any[] = [],
+    confirmations: number = 1
+  ): Promise<{
+    contract: ethers.Contract;
+    receipt: {
+      address: string;
+      transactionHash: string;
+      gasUsed: bigint;
+    };
+  }> {
+    if (!Number.isInteger(confirmations) || confirmations < 1) {
+      throw new Error("confirmations must be a positive integer");
+    }
+
+    const factory = new ethers.ContractFactory(
+      abi,
+      bytecode,
+      this.signer
+    );
+
+    const contract = (await factory.deploy(...args)) as unknown as ethers.Contract;
+    const deploymentTx = contract.deploymentTransaction();
+
+    if (!deploymentTx) {
+      throw new Error("Deployment transaction was not created");
+    }
+
+    const receipt = await deploymentTx.wait(confirmations);
+
+    if (!receipt) {
+      throw new Error("Deployment transaction receipt was not found");
+    }
+
+    const address = await contract.getAddress();
+
+    return {
+      contract,
+      receipt: {
+        address,
+        transactionHash: receipt.hash,
+        gasUsed: receipt.gasUsed,
+      },
+    };
+  }
+
 }
